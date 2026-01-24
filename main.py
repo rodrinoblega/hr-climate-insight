@@ -108,15 +108,16 @@ def generate_report(
     # Step 4: Generate charts (if enabled)
     charts = {}
     charts_summary = ""
+    max_charts = 15  # Limit number of charts
 
     if include_charts:
         logger.info("Generating charts for survey questions...")
         charts_dir = output_dir / "charts"
-        charts = generate_all_charts(filtered_df, charts_dir, max_charts=15)
+        charts = generate_all_charts(filtered_df, charts_dir, max_charts=max_charts)
         logger.info(f"Generated {len(charts)} charts")
 
-        # Get summary for prompt
-        charts_summary = get_chartable_questions_summary(filtered_df)
+        # Get summary for prompt (same limit to ensure consistency)
+        charts_summary = get_chartable_questions_summary(filtered_df, max_charts=max_charts)
 
     # Step 5: Prepare data for LLM
     logger.info("Preparing data for LLM analysis...")
@@ -147,14 +148,22 @@ def generate_report(
 {charts_summary}
 
 INSTRUCCIONES CRÍTICAS PARA GRÁFICOS:
-1. DEBES usar entre 4 y 6 marcadores [GRAFICO: N] en tu respuesta
-2. N es el número de la pregunta de la lista anterior
-3. Coloca el marcador en una línea sola, seguido de un párrafo que analice el gráfico
-4. Ejemplo EXACTO de formato:
+1. DEBES usar entre 4 y 6 marcadores [GRAFICO: palabra_clave] en tu respuesta
+2. Usa la palabra_clave EXACTA de la lista anterior (ej: orgullo, recomendar, liderazgo)
+3. Coloca el marcador en una línea sola, seguido de un párrafo que analice ESE gráfico específico
+4. IMPORTANTE: El texto después del gráfico debe hablar sobre LA MISMA pregunta del gráfico
 
-[GRAFICO: 3]
+Ejemplo CORRECTO:
 
-Como se observa en el gráfico anterior, la distribución de respuestas muestra que el 85% de los colaboradores...
+[GRAFICO: orgullo]
+
+Como se observa en el gráfico anterior, el nivel de orgullo de los colaboradores es alto, con un promedio de 4.6...
+
+Ejemplo INCORRECTO (NO hacer esto):
+
+[GRAFICO: orgullo]
+
+Como se observa en el gráfico anterior, el 85% recomendaría la empresa...  ← ERROR: habla de recomendar, no de orgullo
 
 === FIN INSTRUCCIONES DE GRÁFICOS ===
 

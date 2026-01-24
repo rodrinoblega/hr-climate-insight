@@ -56,15 +56,15 @@ REGLAS CRÍTICAS (NO NEGOCIABLES):
 
 6. USO OBLIGATORIO DE GRÁFICOS
    - DEBES incluir entre 4 y 6 gráficos en el informe usando marcadores
-   - Formato del marcador: [GRAFICO: N] donde N es el número de pregunta
-   - Los gráficos disponibles se listan al final de este prompt
+   - Formato del marcador: [GRAFICO: palabra_clave] (ej: orgullo, liderazgo, comunicacion)
+   - Los gráficos disponibles y sus palabras clave se listan al inicio de este prompt
    - Inserta cada gráfico ANTES del párrafo que lo analiza
-   - Después de cada [GRAFICO: N], escribe "Como se observa en el gráfico anterior..." y analiza los resultados
+   - CRÍTICO: El texto después del gráfico DEBE hablar sobre la MISMA pregunta del gráfico
    - Ejemplo de uso correcto:
 
-     [GRAFICO: 3]
+     [GRAFICO: orgullo]
 
-     Como se observa en el gráfico anterior, el 85% de los colaboradores...
+     Como se observa en el gráfico anterior, el nivel de orgullo de los colaboradores...
 
 MÉTODO DE ANÁLISIS DINÁMICO:
 

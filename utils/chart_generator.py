@@ -223,12 +223,79 @@ def generate_all_charts(
     return generated_charts
 
 
-def get_chartable_questions_summary(df: pd.DataFrame) -> str:
+def _extract_keyword(question: str) -> str:
+    """
+    Extract a simple keyword from a question for use in chart markers.
+
+    Args:
+        question: The full question text
+
+    Returns:
+        A short keyword (2-4 words) that identifies the question
+    """
+    import re
+
+    # Remove common prefixes like "1. 1)." etc.
+    cleaned = re.sub(r'^[\d\.\)\s]+', '', question)
+
+    # Remove question marks and common filler words
+    cleaned = cleaned.replace('¿', '').replace('?', '')
+
+    # Common keyword mappings for typical survey questions
+    keyword_patterns = [
+        (r'orgulloso|orgullo', 'orgullo'),
+        (r'recomendar|recomendarías', 'recomendar'),
+        (r'cambiar.*trabajo|cambiarías', 'cambiar_trabajo'),
+        (r'tratados.*igual|favoritismo|equidad', 'trato_igualitario'),
+        (r'objetivos.*empresa|conoces.*objetivos', 'objetivos_empresa'),
+        (r'objetivos.*puesto|descripción.*puesto', 'objetivos_puesto'),
+        (r'remuneración|salario|sueldo', 'remuneracion'),
+        (r'herramientas|software|elementos', 'herramientas'),
+        (r'procesos.*desactualizados|mejorar.*procesos', 'procesos'),
+        (r'propusiste.*mejora|comentaste.*mejora', 'propuestas_mejora'),
+        (r'beneficios', 'beneficios'),
+        (r'capacitaci[oó]n|formación', 'capacitacion'),
+        (r'equipo.*trabajo|gusto.*equipo', 'equipo_trabajo'),
+        (r'clima.*laboral|ambiente.*trabajo', 'clima_laboral'),
+        (r'colaboración.*área|colaboración.*equipo', 'colaboracion'),
+        (r'feedback|devolución|retroalimentación', 'feedback'),
+        (r'reconoce.*esfuerzo|reconocimiento', 'reconocimiento'),
+        (r'escucha.*opiniones|tiene.*cuenta', 'escucha'),
+        (r'liderazgo|líder|superior', 'liderazgo'),
+        (r'apoyo|contención', 'apoyo'),
+        (r'dependencia.*jerárquica|esquema.*dependencia', 'jerarquia'),
+        (r'comunicación.*área|comunicación.*interna', 'comunicacion'),
+        (r'direcci[oó]n|gerencia', 'direccion'),
+        (r'encuesta.*importante|importancia.*encuesta', 'importancia_encuesta'),
+        (r'eficiente|eficiencia', 'eficiencia'),
+        (r'confianza|confí[ao]', 'confianza'),
+        (r'error|mencionar.*error', 'errores'),
+        (r'problemas.*culpables|resolver.*problemas', 'resolver_problemas'),
+        (r'sector|área.*trabajas', 'sector'),
+    ]
+
+    cleaned_lower = cleaned.lower()
+    for pattern, keyword in keyword_patterns:
+        if re.search(pattern, cleaned_lower):
+            return keyword
+
+    # Fallback: take first 3 significant words
+    words = re.findall(r'\b[a-záéíóúñü]{4,}\b', cleaned_lower)
+    if words:
+        return '_'.join(words[:2])
+
+    return cleaned[:20].lower().replace(' ', '_')
+
+
+def get_chartable_questions_summary(df: pd.DataFrame, max_charts: int = 15) -> str:
     """
     Generate a summary of chartable questions for the LLM prompt.
+    Uses keywords instead of numbers for more reliable matching.
+    Only includes questions up to max_charts to match what's actually generated.
 
     Args:
         df: Survey DataFrame
+        max_charts: Maximum number of charts (should match generate_all_charts)
 
     Returns:
         String summary for inclusion in the prompt
@@ -240,22 +307,28 @@ def get_chartable_questions_summary(df: pd.DataFrame) -> str:
 
     lines = [
         "PREGUNTAS GRAFICABLES DISPONIBLES:",
-        "Puedes insertar gráficos para las siguientes preguntas usando el marcador [GRAFICO: número]",
+        "Usa el marcador [GRAFICO: palabra_clave] para insertar gráficos.",
+        "Las palabras clave disponibles son:",
         ""
     ]
 
-    for i, (question, info) in enumerate(chart_data.items(), 1):
+    # Only show questions up to max_charts (same limit as generate_all_charts)
+    for i, (question, info) in enumerate(chart_data.items()):
+        if i >= max_charts:
+            break
+
+        keyword = _extract_keyword(question)
         # Truncate question for display
-        q_display = question[:80] + "..." if len(question) > 80 else question
+        q_display = question[:70] + "..." if len(question) > 70 else question
 
         if info['type'] == 'numeric_scale':
-            lines.append(f"{i}. [Escala numérica] {q_display}")
-            lines.append(f"   Promedio: {info['mean']:.2f}")
+            lines.append(f"• [GRAFICO: {keyword}] → {q_display}")
+            lines.append(f"  Promedio: {info['mean']:.2f}")
         else:
-            lines.append(f"{i}. [Categórica] {q_display}")
+            lines.append(f"• [GRAFICO: {keyword}] → {q_display}")
             # Show distribution
             dist = ", ".join([f"{l}: {c}" for l, c in zip(info['labels'][:3], info['counts'][:3])])
-            lines.append(f"   Distribución: {dist}")
+            lines.append(f"  Distribución: {dist}")
         lines.append("")
 
     return "\n".join(lines)

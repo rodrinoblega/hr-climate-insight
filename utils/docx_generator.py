@@ -125,26 +125,69 @@ def _insert_chart(doc: Document, chart_key: str, charts: dict):
 
     Args:
         doc: Document object
-        chart_key: Key to look up the chart (number or partial question text)
+        chart_key: Key to look up the chart (keyword or partial question text)
         charts: Dictionary of available charts
     """
     chart_path = None
+    chart_key_lower = chart_key.lower().strip()
 
-    # Try to find the chart by key
-    # First, try exact match or number match
-    if chart_key.isdigit():
-        # It's a number reference
+    # Keyword to question text mapping patterns
+    keyword_patterns = {
+        'orgullo': ['orgulloso', 'orgullo'],
+        'recomendar': ['recomendar', 'recomendarías', 'buen lugar'],
+        'cambiar_trabajo': ['cambiar', 'cambiarías de trabajo'],
+        'trato_igualitario': ['tratados', 'igual manera', 'favoritismo'],
+        'objetivos_empresa': ['objetivos generales', 'objetivos de la empresa'],
+        'objetivos_puesto': ['objetivos', 'descripción del puesto'],
+        'remuneracion': ['remuneración', 'salario', 'acorde a las tareas'],
+        'herramientas': ['herramientas', 'software', 'elementos'],
+        'procesos': ['procesos', 'desactualizados'],
+        'propuestas_mejora': ['propusiste', 'mejora', 'comentaste'],
+        'beneficios': ['beneficios'],
+        'capacitacion': ['capacitación', 'capacitaciones', 'formación'],
+        'equipo_trabajo': ['equipo de trabajo', 'gusto', 'equipo al cual'],
+        'clima_laboral': ['clima laboral', 'ambiente de trabajo', 'ambiente en'],
+        'colaboracion': ['colaboración', 'entre los distintos'],
+        'feedback': ['feedback', 'devolución', 'retroalimentación'],
+        'reconocimiento': ['reconoce', 'esfuerzos'],
+        'escucha': ['escucha', 'tiene en cuenta', 'opiniones'],
+        'liderazgo': ['liderazgo', 'calificarías el liderazgo'],
+        'apoyo': ['apoyo', 'contención'],
+        'jerarquia': ['dependencia jerárquica', 'esquema'],
+        'comunicacion': ['comunicación entre áreas', 'comunicación interna'],
+        'direccion': ['dirección', 'gerencia'],
+        'importancia_encuesta': ['importante', 'realización de esta encuesta'],
+        'eficiencia': ['eficiente', 'eficiencia'],
+        'confianza': ['confianza', 'confío', 'confía'],
+        'errores': ['error', 'mencionar'],
+        'resolver_problemas': ['problemas', 'culpables', 'resolver'],
+        'sector': ['sector', 'área trabajas'],
+    }
+
+    # First, try to match keyword to patterns
+    search_terms = []
+    if chart_key_lower in keyword_patterns:
+        search_terms = keyword_patterns[chart_key_lower]
+    else:
+        # Use the key itself as search term
+        search_terms = [chart_key_lower.replace('_', ' '), chart_key_lower]
+
+    # Search for matching chart
+    for question, info in charts.items():
+        question_lower = question.lower()
+        for term in search_terms:
+            if term in question_lower:
+                chart_path = info.get('path')
+                break
+        if chart_path:
+            break
+
+    # Fallback: try number if it's a digit (backwards compatibility)
+    if not chart_path and chart_key.isdigit():
         idx = int(chart_key) - 1
         if 0 <= idx < len(charts):
             chart_info = list(charts.values())[idx]
             chart_path = chart_info.get('path')
-    else:
-        # Try to match by partial question text
-        chart_key_lower = chart_key.lower()
-        for question, info in charts.items():
-            if chart_key_lower in question.lower():
-                chart_path = info.get('path')
-                break
 
     if chart_path and Path(chart_path).exists():
         # Add the image centered
