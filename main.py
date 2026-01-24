@@ -116,8 +116,8 @@ def generate_report(
         charts = generate_all_charts(filtered_df, charts_dir, max_charts=max_charts)
         logger.info(f"Generated {len(charts)} charts")
 
-        # Get summary for prompt (same limit to ensure consistency)
-        charts_summary = get_chartable_questions_summary(filtered_df, max_charts=max_charts)
+        # Get summary for prompt using the SAME charts dict (ensures keyword consistency)
+        charts_summary = get_chartable_questions_summary(charts)
 
     # Step 5: Prepare data for LLM
     logger.info("Preparing data for LLM analysis...")

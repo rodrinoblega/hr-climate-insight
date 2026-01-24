@@ -201,23 +201,46 @@ def generate_all_charts(
         max_charts: Maximum number of charts to generate
 
     Returns:
-        Dictionary mapping question text to chart file path
+        Dictionary mapping KEYWORD to chart info:
+        {
+            'orgullo': {
+                'path': Path,
+                'question': str,
+                'info': dict,
+                'keyword': str
+            }
+        }
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     chart_data = get_chart_data(df)
     generated_charts = {}
+    used_keywords = set()
 
     for i, (question, info) in enumerate(chart_data.items()):
         if i >= max_charts:
             break
 
+        # Generate keyword for this question
+        keyword = _extract_keyword(question)
+
+        # Handle duplicate keywords by adding a suffix
+        original_keyword = keyword
+        suffix = 2
+        while keyword in used_keywords:
+            keyword = f"{original_keyword}_{suffix}"
+            suffix += 1
+        used_keywords.add(keyword)
+
         chart_path = generate_chart(question, info, output_dir)
         if chart_path:
-            generated_charts[question] = {
+            # Key by keyword, not by question
+            generated_charts[keyword] = {
                 'path': chart_path,
+                'question': question,
                 'info': info,
+                'keyword': keyword,
             }
 
     return generated_charts
@@ -287,22 +310,18 @@ def _extract_keyword(question: str) -> str:
     return cleaned[:20].lower().replace(' ', '_')
 
 
-def get_chartable_questions_summary(df: pd.DataFrame, max_charts: int = 15) -> str:
+def get_chartable_questions_summary(charts: dict) -> str:
     """
-    Generate a summary of chartable questions for the LLM prompt.
-    Uses keywords instead of numbers for more reliable matching.
-    Only includes questions up to max_charts to match what's actually generated.
+    Generate a summary of available charts for the LLM prompt.
+    Uses the already-generated charts dict to ensure keyword consistency.
 
     Args:
-        df: Survey DataFrame
-        max_charts: Maximum number of charts (should match generate_all_charts)
+        charts: Dictionary from generate_all_charts() with keywords as keys
 
     Returns:
         String summary for inclusion in the prompt
     """
-    chart_data = get_chart_data(df)
-
-    if not chart_data:
+    if not charts:
         return "No se detectaron preguntas graficables en esta encuesta."
 
     lines = [
@@ -312,12 +331,10 @@ def get_chartable_questions_summary(df: pd.DataFrame, max_charts: int = 15) -> s
         ""
     ]
 
-    # Only show questions up to max_charts (same limit as generate_all_charts)
-    for i, (question, info) in enumerate(chart_data.items()):
-        if i >= max_charts:
-            break
+    for keyword, chart_info in charts.items():
+        question = chart_info['question']
+        info = chart_info['info']
 
-        keyword = _extract_keyword(question)
         # Truncate question for display
         q_display = question[:70] + "..." if len(question) > 70 else question
 

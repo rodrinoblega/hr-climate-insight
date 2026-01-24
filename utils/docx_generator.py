@@ -125,77 +125,27 @@ def _insert_chart(doc: Document, chart_key: str, charts: dict):
 
     Args:
         doc: Document object
-        chart_key: Key to look up the chart (keyword or partial question text)
-        charts: Dictionary of available charts
+        chart_key: Keyword to look up the chart (must match key in charts dict)
+        charts: Dictionary from generate_all_charts() with keywords as keys
     """
-    chart_path = None
-    chart_key_lower = chart_key.lower().strip()
+    chart_key_clean = chart_key.lower().strip()
 
-    # Keyword to question text mapping patterns
-    keyword_patterns = {
-        'orgullo': ['orgulloso', 'orgullo'],
-        'recomendar': ['recomendar', 'recomendarías', 'buen lugar'],
-        'cambiar_trabajo': ['cambiar', 'cambiarías de trabajo'],
-        'trato_igualitario': ['tratados', 'igual manera', 'favoritismo'],
-        'objetivos_empresa': ['objetivos generales', 'objetivos de la empresa', 'objetivos y la descripción', 'tareas y responsabilidades están alineadas'],
-        'objetivos_puesto': ['objetivos', 'descripción del puesto'],
-        'remuneracion': ['remuneración', 'salario', 'acorde a las tareas'],
-        'herramientas': ['herramientas', 'software', 'elementos'],
-        'procesos': ['procesos', 'desactualizados'],
-        'según_experiencia': ['según tu experiencia', 'tareas que haces todos los días'],
-        'propuestas_mejora': ['propusiste', 'mejora', 'comentaste'],
-        'beneficios': ['beneficios'],
-        'capacitacion': ['capacitación', 'capacitaciones', 'formación', 'necesitas capacitación'],
-        'equipo_trabajo': ['equipo de trabajo', 'gusto', 'equipo al cual', 'a gusto estás con el equipo'],
-        'clima_laboral': ['clima laboral', 'ambiente de trabajo', 'ambiente en'],
-        'colaboracion': ['colaboración', 'entre los distintos'],
-        'feedback': ['feedback', 'devolución', 'retroalimentación', 'recibis devolución'],
-        'reconocimiento': ['reconoce', 'esfuerzos'],
-        'escucha': ['escucha', 'tiene en cuenta', 'opiniones'],
-        'liderazgo': ['liderazgo', 'calificarías el liderazgo'],
-        'apoyo': ['apoyo', 'contención'],
-        'jerarquia': ['dependencia jerárquica', 'esquema'],
-        'comunicacion': ['comunicación entre áreas', 'comunicación interna', 'evaluarías la comunicación'],
-        'direccion': ['dirección', 'gerencia'],
-        'importancia_encuesta': ['importante', 'realización de esta encuesta'],
-        'eficiencia': ['eficiente', 'eficiencia', 'trabajamos de manera eficiente'],
-        'confianza': ['confianza', 'confío', 'confía'],
-        'errores': ['error', 'mencionar'],
-        'resolver_problemas': ['problemas', 'culpables', 'resolver'],
-        'sector': ['sector', 'área trabajas', 'en qué sector'],
-    }
+    # Direct lookup by keyword - no pattern matching needed!
+    chart_info = charts.get(chart_key_clean)
 
-    # First, try to match keyword to patterns
-    search_terms = []
-    if chart_key_lower in keyword_patterns:
-        search_terms = keyword_patterns[chart_key_lower]
-    else:
-        # Use the key itself as search term
-        search_terms = [chart_key_lower.replace('_', ' '), chart_key_lower]
-
-    # Search for matching chart
-    for question, info in charts.items():
-        question_lower = question.lower()
-        for term in search_terms:
-            if term in question_lower:
-                chart_path = info.get('path')
+    # Fallback: try case-insensitive match
+    if not chart_info:
+        for key, info in charts.items():
+            if key.lower() == chart_key_clean:
+                chart_info = info
                 break
-        if chart_path:
-            break
 
-    # Fallback: try number if it's a digit (backwards compatibility)
-    if not chart_path and chart_key.isdigit():
-        idx = int(chart_key) - 1
-        if 0 <= idx < len(charts):
-            chart_info = list(charts.values())[idx]
-            chart_path = chart_info.get('path')
-
-    if chart_path and Path(chart_path).exists():
+    if chart_info and chart_info.get('path') and Path(chart_info['path']).exists():
         # Add the image centered
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = p.add_run()
-        run.add_picture(str(chart_path), width=Inches(5.5))
+        run.add_picture(str(chart_info['path']), width=Inches(5.5))
 
         # Add a small space after the image
         doc.add_paragraph()

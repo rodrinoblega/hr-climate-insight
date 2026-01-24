@@ -60,7 +60,7 @@ python main.py -i survey.xlsx -e "Empresa" -p "País" -c "Ciudad" --no-charts
 
 1. **LLM-first**: El LLM detecta dimensiones dinámicamente desde las preguntas, no hay estructura fija de 7 dimensiones
 2. **Anonimato hardcodeado**: Umbral n≥5 en código, no configurable (tolerancia cero)
-3. **Gráficos con palabras clave**: El LLM escribe `[GRAFICO: palabra_clave]` (ej: orgullo, liderazgo) y el código busca e inserta el PNG correspondiente. Esto evita errores de matching entre número y contenido.
+3. **Gráficos con palabras clave**: El LLM escribe `[GRAFICO: palabra_clave]` (ej: orgullo, liderazgo) y el código hace búsqueda directa por keyword. Las keywords se generan una sola vez en `generate_all_charts()` y se usan tanto para el summary del LLM como para la inserción - no hay patrones duplicados.
 4. **Adaptación cultural**: El prompt adapta "vos/tú/você" según el país
 5. **Markdown intermedio**: LLM genera Markdown, luego se convierte a DOCX (más fácil de debuggear)
 
