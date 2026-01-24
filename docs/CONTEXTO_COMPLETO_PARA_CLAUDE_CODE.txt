@@ -1,0 +1,607 @@
+================================================================================
+    CONTEXTO COMPLETO DEL PROYECTO - PARA CLAUDE CODE
+================================================================================
+
+Este documento contiene TODO el contexto de las conversaciones previas
+para que Claude Code pueda ayudarte a implementar el Pre-MVP.
+
+
+================================================================================
+                    1. RESUMEN EJECUTIVO DEL PROYECTO
+================================================================================
+
+NOMBRE: Agente IA de Clima Organizacional - Pre-MVP
+
+OBJETIVO:
+Desarrollar un sistema interno para una consultora que:
+  • Analiza encuestas de clima laboral (Excel desde Google Forms)
+  • Genera informes profesionales en DOCX
+  • Detecta riesgos y oportunidades
+  • Proporciona recomendaciones accionables
+  • Respeta anonimato (n ≥ 5)
+  • Se adapta al contexto cultural
+
+ENFOQUE VALIDADO:
+Después de analizar múltiples opciones, se decidió usar un enfoque
+LLM-first por:
+  ✅ Simplicidad (100 líneas vs 2000+ líneas)
+  ✅ Velocidad de desarrollo (2 días vs 4 semanas)
+  ✅ Flexibilidad (cambiar criterio = cambiar prompt)
+  ✅ Costo irrelevante ($0.002 por análisis)
+  ✅ Calidad superior
+
+
+================================================================================
+                    2. DECISIONES DE ARQUITECTURA
+================================================================================
+
+ARQUITECTURA FINAL ELEGIDA:
+
+┌─────────────────────────────────────────────────────────┐
+│ 1. Usuario sube Excel                                   │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 2. Script Python lee Excel + aplica anonimato          │
+│    (pandas - filtro hardcoded n≥5)                      │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 3. Convierte a CSV/JSON + contexto                      │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 4. Envía a LLM (GPT-4o-mini o Claude) con prompt       │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 5. LLM genera informe completo en Markdown             │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 6. Script convierte Markdown a DOCX                     │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 7. Usuario revisa y edita antes de enviar al cliente   │
+└─────────────────────────────────────────────────────────┘
+
+
+TECNOLOGÍAS:
+  • Python 3.x
+  • pandas (leer Excel)
+  • openai o anthropic (API del LLM)
+  • python-docx (generar DOCX)
+  • No framework web (es script CLI)
+
+
+================================================================================
+                    3. DATOS REALES DEL PROYECTO
+================================================================================
+
+ENCUESTA REAL ANALIZADA: Wassington 2025
+
+Características:
+  • 45 respuestas
+  • 33 columnas (preguntas)
+  • 4 sectores: Comercial (17), Producción (13), Administración (11), 
+    Áreas varias (4)
+  • Problema de anonimato: "Áreas varias" debe excluirse (n<5)
+  • Formato mixto: escalas 1-5 + categóricas (Sí/No/Tal vez)
+  • Nombres de columnas LARGOS (hasta 200+ caracteres)
+  • Contexto: Argentina, lenguaje "vos", "sentís", etc.
+
+Ejemplo de columna:
+"5. 2). Respecto a tu equipo, ¿estás de acuerdo con las siguientes 
+afirmaciones? (Marca tu respuesta: Nunca/ Rara vez/ A veces/ 
+Frecuentemente/ Siempre [Mis compañeros y yo trabajamos de manera 
+eficiente]"
+
+Resultados generales:
+  • Clima muy positivo (todos los indicadores >4.0/5)
+  • Orgullo: 4.62/5
+  • Ambiente: 4.36/5
+  • Liderazgo: 4.24/5
+
+
+DOCUMENTO DE SALIDA ESPERADO:
+
+Características:
+  • ~10,000 palabras (~20 páginas)
+  • Estructura profesional con 8 secciones
+  • Análisis cuantitativo con porcentajes
+  • Tabla resumen con emojis
+  • Plan de acción a 12 meses
+  • Lenguaje profesional, empático, constructivo
+  • Tono NO punitivo
+  • Adaptado al contexto argentino
+
+Secciones:
+  1. Introducción
+  2. Compromiso y satisfacción general
+  3. Equidad, reconocimiento y compensaciones
+  4. Desarrollo y capacitación
+  5. Herramientas y procesos
+  6. Trabajo en equipo
+  7. Comunicación interna
+  8. Liderazgo
+  9. Calificación global
+  10. Plan de acción
+
+
+================================================================================
+                    4. ESPECIFICACIÓN TÉCNICA
+================================================================================
+
+REQUERIMIENTOS CRÍTICOS (Tolerancia CERO):
+
+1. ANONIMATO
+   • Umbral: n ≥ 5 por segmento
+   • Implementación: Filtro hardcoded ANTES de enviar al LLM
+   • Logging: Registrar qué segmentos se excluyen
+   • Validación: Doble (código + instrucción en prompt)
+
+2. CLASIFICACIÓN DE RIESGOS
+   • ALTO: promedio < 3.0
+   • MEDIO: promedio 3.0-3.9
+   • BAJO: promedio ≥ 4.0
+   • Debe reconocer ESTABILIDAD (ausencia de riesgo)
+
+3. RECOMENDACIONES DIFERENCIADAS
+   • Para RRHH: acciones sistémicas, políticas, programas
+   • Para Líderes: acciones por equipo, coaching
+   • NUNCA evaluativas ni individualizantes
+
+4. ADAPTACIÓN CULTURAL
+   • Input: país y ciudad de la empresa
+   • Uso: adaptar lenguaje, intensidad, timing de recomendaciones
+
+
+ESTRUCTURA DE ARCHIVOS PROPUESTA:
+
+```
+proyecto/
+├── main.py                 # Script principal
+├── config.py              # Configuración (API keys, etc.)
+├── prompts/
+│   └── master_prompt.txt  # Prompt maestro
+├── utils/
+│   ├── excel_parser.py    # Leer y procesar Excel
+│   ├── anonymity.py       # Filtro de anonimato
+│   └── docx_generator.py  # Generar DOCX
+├── data/
+│   └── input/             # Carpeta para Excels
+├── output/                # Carpeta para DOCXs generados
+├── requirements.txt       # Dependencias
+└── README.md             # Documentación
+```
+
+
+CÓDIGO ESTIMADO:
+  • main.py: ~80 líneas
+  • excel_parser.py: ~60 líneas
+  • anonymity.py: ~40 líneas
+  • docx_generator.py: ~70 líneas
+  • master_prompt.txt: ~500 líneas (el corazón del sistema)
+  
+TOTAL: ~250 líneas de código + prompt
+
+
+================================================================================
+                    5. PROMPT MAESTRO (DRAFT)
+================================================================================
+
+Este es el prompt que define el "criterio organizacional":
+
+```
+SISTEMA:
+Eres un consultor senior de clima organizacional con 15 años de experiencia.
+Tu enfoque es preventivo, ético y humano. Nunca eres punitivo ni señalas 
+culpables. Tu estilo de redacción es profesional pero cálido, similar al 
+de Verónica Dobronich.
+
+CONTEXTO DE LA ENCUESTA:
+- Empresa: {empresa_nombre}
+- País: {pais}
+- Ciudad: {ciudad}
+- Fecha: {fecha}
+- Total respuestas válidas: {n_total}
+
+DATOS DE LA ENCUESTA:
+{datos_csv}
+
+METADATA DE COLUMNAS:
+{metadata}
+
+REGLAS CRÍTICAS (NO NEGOCIABLES):
+
+1. ANONIMATO
+   • Todos los datos ya fueron filtrados con n≥5
+   • Si algún segmento fue excluido, mencionarlo explícitamente
+   • NUNCA hacer análisis que puedan identificar individuos
+
+2. CLASIFICACIÓN DE RIESGOS
+   • ALTO: promedio < 3.0 en dimensiones críticas
+   • MEDIO: promedio 3.0-3.9
+   • BAJO: promedio ≥ 4.0
+   • Reconocer explícitamente ESTABILIDAD SALUDABLE cuando no hay riesgo
+
+3. LENGUAJE Y TONO
+   • Profesional pero empático
+   • Constructivo, NO punitivo
+   • Adaptado al contexto de {pais}
+   • Reconocer fortalezas antes de áreas de mejora
+   • Usar "vos" si es Argentina, "tú" si es España/México
+
+4. RECOMENDACIONES
+   • Para RRHH: acciones sistémicas (políticas, programas, procesos)
+   • Para Líderes: acciones específicas por equipo
+   • Todas accionables y con timeline sugerido
+   • NUNCA evaluativas de desempeño individual
+
+5. MÉTODO DE ANÁLISIS
+   • Identificar dimensiones automáticamente
+   • Calcular promedios por segmento y dimensión
+   • Detectar patrones y microclimas
+   • Conectar datos para formar narrativa coherente
+   • Priorizar focos de atención
+
+ESTRUCTURA DEL INFORME (OBLIGATORIA):
+
+# INFORME DE CLIMA ORGANIZACIONAL
+## {Empresa} ({Fecha})
+
+**Consultora:** [Tu nombre/empresa]
+**Destinatario:** Dirección General de {Empresa}
+**Fecha:** {Fecha}
+
+### Introducción
+[Resumen ejecutivo: 3-4 párrafos]
+[Metodología]
+[Hallazgos principales]
+[Nota sobre anonimato si se excluyeron segmentos]
+
+### Análisis por Dimensiones
+
+[Para cada dimensión detectada:]
+
+#### {Número}. {Nombre de la Dimensión}
+
+[Párrafo inicial con hallazgo principal]
+
+**Datos cuantitativos:**
+- {Métrica 1}: {valor} ({interpretación})
+- {Métrica 2}: {valor} ({interpretación})
+
+[Interpretación contextual - 2-3 párrafos]
+
+[Implicaciones estratégicas]
+
+**Nivel de riesgo:** [ALTO 🔴 / MEDIO 🟡 / BAJO 🟢]
+
+---
+
+### Tabla Resumen
+
+| Dimensión | Resultado Principal | Nivel |
+|-----------|---------------------|-------|
+| 🏢 {Dim 1} | {Resumen} | ✅ {Nivel} |
+| 💰 {Dim 2} | {Resumen} | ⚠️ {Nivel} |
+[...]
+
+### Calificación Global del Clima
+
+[Síntesis general]
+[Fortalezas principales]
+[Áreas de oportunidad]
+
+### Plan de Acción a 12 Meses
+
+#### Prioridad Alta (Q1 - Primeros 3 meses)
+**Para RRHH:**
+1. {Acción específica}
+   - Objetivo: {qué se busca lograr}
+   - Métrica: {cómo medirlo}
+
+**Para Líderes:**
+1. {Acción específica}
+   - Objetivo: {qué se busca lograr}
+   - Métrica: {cómo medirlo}
+
+#### Prioridad Media (Q2-Q3)
+[...]
+
+#### Seguimiento Continuo (Q4)
+[...]
+
+### Conclusiones y Próximos Pasos
+
+[Mensaje final motivacional]
+[Próximos pasos concretos]
+
+---
+
+INSTRUCCIONES FINALES:
+- Genera el documento completo en Markdown
+- Mínimo 8,000 palabras
+- Usa el mismo nivel de profundidad en todas las secciones
+- Conecta hallazgos entre secciones
+- Sé específico en porcentajes y números
+- Mantén tono consistente en todo el documento
+```
+
+
+================================================================================
+                    6. CASOS DE USO Y FLUJO
+================================================================================
+
+CASO DE USO 1: Primera encuesta de un cliente nuevo
+
+1. Usuario ejecuta:
+   ```bash
+   python main.py --input encuesta_wassington.xlsx --empresa "Wassington" --pais "Argentina" --ciudad "Buenos Aires"
+   ```
+
+2. El script:
+   - Lee el Excel
+   - Detecta columnas automáticamente
+   - Aplica filtro de anonimato
+   - Genera prompt con datos
+   - Llama a LLM
+   - Convierte output a DOCX
+   - Guarda en ./output/informe_wassington_2025.docx
+
+3. Usuario revisa el DOCX y lo envía al cliente
+
+TIEMPO TOTAL: 2-3 minutos (30 seg generación + 2 min revisión)
+
+
+CASO DE USO 2: Segunda encuesta del mismo cliente
+
+1. Usuario ejecuta (mismo comando)
+
+2. El script detecta si existe configuración guardada
+   - Si existe: usa mapeo anterior
+   - Si no: genera nuevo mapeo
+
+3. Output consistente con el anterior
+
+
+VALIDACIONES INCLUIDAS:
+
+✅ Verificar que el Excel existe
+✅ Validar que tiene al menos 1 fila de datos
+✅ Aplicar umbral de anonimato
+✅ Validar que queden segmentos válidos después del filtro
+✅ Verificar que la API key está configurada
+✅ Manejar errores de la API
+✅ Validar que el output del LLM es válido
+
+
+================================================================================
+                    7. PLAN DE IMPLEMENTACIÓN
+================================================================================
+
+SPRINT 0 (Día 1-2):
+
+DÍA 1:
+  [ ] Setup del proyecto
+  [ ] Instalar dependencias
+  [ ] Crear estructura de carpetas
+  [ ] Implementar excel_parser.py básico
+  [ ] Implementar anonymity.py
+  [ ] Probar con Excel de Wassington
+
+DÍA 2:
+  [ ] Diseñar prompt maestro inicial
+  [ ] Implementar llamada a API (OpenAI o Anthropic)
+  [ ] Implementar conversión Markdown → DOCX
+  [ ] Generar primer informe completo
+  [ ] Revisar calidad vs documento manual
+
+CRITERIO DE ÉXITO:
+✅ El script genera un informe comparable al manual
+✅ Respeta anonimato (excluye "Áreas varias")
+✅ El output es editable en Word
+✅ Toma menos de 1 minuto generar
+
+
+SPRINT 1 (Día 3-5):
+
+  [ ] Refinar prompt basado en feedback
+  [ ] Agregar validaciones robustas
+  [ ] Mejorar formato del DOCX
+  [ ] Probar con 2-3 encuestas diferentes
+  [ ] Optimizar estructura de tablas
+  [ ] Agregar logging
+  [ ] Documentar README
+
+
+CRITERIO DE ÉXITO:
+✅ Funciona con diferentes formatos de Excel
+✅ La calidad es consistente
+✅ Manejo de errores robusto
+✅ Documentación clara para usar
+
+
+================================================================================
+                    8. DECISIONES TOMADAS EN LA CONVERSACIÓN
+================================================================================
+
+1. NO usar pattern matching complejo
+   Razón: El LLM entiende columnas automáticamente
+
+2. NO usar YAML para configuración (por ahora)
+   Razón: Pre-MVP debe ser simple, agregar después si hace falta
+
+3. NO crear frontend web
+   Razón: Script CLI es suficiente para Pre-MVP
+
+4. SÍ usar GPT-4o-mini por defecto
+   Razón: Costo casi cero ($0.002), calidad muy buena
+
+5. SÍ implementar filtro de anonimato en código
+   Razón: Tolerancia CERO a errores, no confiar solo en LLM
+
+6. SÍ generar Markdown primero, luego convertir a DOCX
+   Razón: Más fácil de debuggear y modificar
+
+7. SÍ incluir prompt versionado
+   Razón: El "criterio organizacional" debe ser auditable
+
+
+================================================================================
+                    9. COSTOS VALIDADOS
+================================================================================
+
+COSTO POR INFORME (Wassington como referencia):
+
+Con GPT-4o-mini:
+  • Input: ~3,400 tokens
+  • Output: ~3,000 tokens
+  • Costo total: $0.002 (~0.2 centavos de dólar)
+
+Con GPT-4o:
+  • Costo total: $0.04 (~4 centavos de dólar)
+
+PROYECCIÓN MENSUAL:
+  • 10 informes/mes: $0.02 (mini) o $0.40 (GPT-4o)
+  • 50 informes/mes: $0.12 (mini) o $1.92 (GPT-4o)
+  • 100 informes/mes: $0.23 (mini) o $3.84 (GPT-4o)
+
+CONCLUSIÓN: Costo IRRELEVANTE para Pre-MVP
+
+
+================================================================================
+                    10. ARCHIVOS DE REFERENCIA DISPONIBLES
+================================================================================
+
+Archivos que tienes disponibles para Claude Code:
+
+1. Encuesta_de_clima_laboral_2025_Wassington.xlsx
+   - Excel real con 45 respuestas
+   - Usar como test case principal
+
+2. Ana_lisis_de_resultados_y_plan_de_accio_n_Encuesta_de_clima-_Wassington_2025.docx
+   - Documento manual de referencia
+   - Usar como benchmark de calidad
+
+3. Specification (documento de desarrollo)
+   - Especificación completa del proyecto
+   - Requisitos funcionales
+
+4. 3_3-Plantilla-encuesta-clima-laboral.pdf
+   - Plantilla genérica de encuesta
+   - Referencia de dimensiones típicas
+
+
+IMPORTANTE: Claude Code puede acceder a estos archivos para entender
+el contexto completo.
+
+
+================================================================================
+                    11. PREGUNTAS FRECUENTES ANTICIPADAS
+================================================================================
+
+P: ¿Por qué no usar un sistema de pattern matching?
+R: El LLM entiende columnas automáticamente, sin necesidad de diccionarios
+   extensos. Es más simple y flexible.
+
+P: ¿Por qué no construir una app web?
+R: Para Pre-MVP, un script CLI es suficiente. Si valida, se puede agregar
+   interfaz después.
+
+P: ¿Cómo se garantiza el anonimato?
+R: Doble validación: (1) Filtro hardcoded en Python ANTES de enviar al LLM,
+   (2) Instrucción en el prompt. Tolerancia CERO.
+
+P: ¿Qué pasa si el LLM genera algo incorrecto?
+R: El usuario SIEMPRE revisa el output antes de enviarlo al cliente. El LLM
+   hace el 95% del trabajo, el humano valida.
+
+P: ¿Por qué Markdown como formato intermedio?
+R: Más fácil de generar para el LLM, más fácil de debuggear, más fácil de
+   convertir a DOCX.
+
+P: ¿Cómo iterar el prompt?
+R: El prompt está en un archivo .txt separado. Modificarlo y re-ejecutar
+   el script. Sin tocar código.
+
+
+================================================================================
+                    12. SIGUIENTE PASO INMEDIATO
+================================================================================
+
+PARA CLAUDE CODE:
+
+1. Crear la estructura de carpetas
+2. Implementar excel_parser.py (leer Excel de Wassington)
+3. Implementar anonymity.py (filtrar n≥5)
+4. Crear el prompt maestro inicial
+5. Implementar main.py con llamada a OpenAI
+6. Implementar docx_generator.py
+7. Generar el primer informe
+
+ARCHIVOS A CREAR:
+  ├── main.py
+  ├── config.py
+  ├── requirements.txt
+  ├── prompts/master_prompt.txt
+  ├── utils/excel_parser.py
+  ├── utils/anonymity.py
+  └── utils/docx_generator.py
+
+DEPENDENCIAS (requirements.txt):
+  pandas>=2.0.0
+  openpyxl>=3.1.0
+  python-docx>=1.1.0
+  openai>=1.0.0
+  python-dotenv>=1.0.0
+
+
+================================================================================
+                    13. CRITERIOS DE VALIDACIÓN
+================================================================================
+
+El Pre-MVP estará LISTO cuando:
+
+✅ Genera un informe a partir del Excel de Wassington
+✅ El informe es comparable al documento manual (calidad)
+✅ Respeta el anonimato (excluye "Áreas varias")
+✅ El documento es editable en Word
+✅ Toma menos de 1 minuto ejecutar
+✅ El costo es predecible (~$0.002 por informe)
+✅ Un usuario técnico puede ejecutarlo sin ayuda
+✅ Incluye README con instrucciones claras
+
+CRITERIOS DE NO-VALIDACIÓN (fuera de alcance Pre-MVP):
+❌ No necesita ser 100% automático
+❌ No necesita interfaz gráfica
+❌ No necesita soportar múltiples clientes simultáneos
+❌ No necesita base de datos
+❌ No necesita autenticación
+
+
+================================================================================
+                    14. FRASE GUÍA DEL PROYECTO
+================================================================================
+
+"No estamos construyendo una app.
+ Estamos construyendo criterio organizacional aumentado por IA."
+
+Esto significa:
+  • El "criterio" está en el PROMPT, no en código complejo
+  • La IA amplifica la capacidad del consultor, no lo reemplaza
+  • La flexibilidad es más importante que la optimización
+  • La validación rápida es más importante que la perfección técnica
+
+
+================================================================================
+                    FIN DEL CONTEXTO
+================================================================================
+
+Claude Code: Con este contexto tienes TODO lo necesario para ayudar
+a implementar el Pre-MVP. 
+
+Siguiente paso: Crear la estructura del proyecto e implementar el código
+base siguiendo las especificaciones aquí definidas.

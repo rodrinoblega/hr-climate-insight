@@ -1,0 +1,15 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Output files (generated reports and charts)
+output/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

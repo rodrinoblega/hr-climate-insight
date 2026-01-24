@@ -1,0 +1,16 @@
+# Requirements para el Pre-MVP
+# Python 3.9+
+
+# Procesamiento de datos
+pandas>=2.0.0
+openpyxl>=3.1.0          # Para leer Excel
+
+# Generación de documentos
+python-docx>=1.1.0       # Para crear DOCX
+
+# API de LLM (elegir una)
+openai>=1.0.0            # Si usas GPT-4o-mini
+# anthropic>=0.8.0       # Si usas Claude
+
+# Utilidades
+python-dotenv>=1.0.0     # Para manejar API keys
