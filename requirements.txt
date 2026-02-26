@@ -16,3 +16,6 @@ openai>=1.0.0            # GPT-4o-mini
 
 # Utilidades
 python-dotenv>=1.0.0     # Para manejar API keys
+
+# Web interface
+streamlit>=1.30.0        # Para la interfaz web

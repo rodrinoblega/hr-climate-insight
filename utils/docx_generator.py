@@ -130,15 +130,53 @@ def _insert_chart(doc: Document, chart_key: str, charts: dict):
     """
     chart_key_clean = chart_key.lower().strip()
 
-    # Direct lookup by keyword - no pattern matching needed!
+    # 1. Direct lookup by keyword
     chart_info = charts.get(chart_key_clean)
 
-    # Fallback: try case-insensitive match
+    # 2. Fallback: case-insensitive exact match
     if not chart_info:
         for key, info in charts.items():
             if key.lower() == chart_key_clean:
                 chart_info = info
                 break
+
+    # 3. Fallback: partial match (keyword contains search term or vice versa)
+    if not chart_info:
+        for key, info in charts.items():
+            key_lower = key.lower()
+            if chart_key_clean in key_lower or key_lower in chart_key_clean:
+                chart_info = info
+                break
+
+    # 4. Fallback: search in question text
+    if not chart_info:
+        for key, info in charts.items():
+            question = info.get('question', '').lower()
+            if chart_key_clean in question:
+                chart_info = info
+                break
+
+    # 5. Fallback: related terms mapping
+    if not chart_info:
+        related_terms = {
+            'liderazgo': ['lider', 'superior', 'jefe', 'feedback', 'escucha'],
+            'comunicacion': ['comunicación', 'informa', 'transparencia'],
+            'equipo': ['equipo_trabajo', 'colaboracion', 'compañeros'],
+            'compensacion': ['remuneracion', 'salario', 'sueldo', 'beneficios'],
+            'desarrollo': ['capacitacion', 'formacion', 'crecimiento'],
+            'compromiso': ['orgullo', 'pertenencia', 'recomendar'],
+            'clima': ['clima_laboral', 'ambiente'],
+        }
+        for term, related in related_terms.items():
+            if chart_key_clean == term or chart_key_clean in related:
+                # Search for any of the related terms
+                for key, info in charts.items():
+                    key_lower = key.lower()
+                    if key_lower == term or key_lower in related or term in key_lower:
+                        chart_info = info
+                        break
+                if chart_info:
+                    break
 
     if chart_info and chart_info.get('path') and Path(chart_info['path']).exists():
         # Add the image centered

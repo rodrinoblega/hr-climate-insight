@@ -4,8 +4,15 @@ venv/
 __pycache__/
 *.pyc
 
+# Streamlit secrets
+.streamlit/secrets.toml
+
 # Output files (generated reports and charts)
 output/
+examples/*.docx
+
+# Client files
+presupuesto_hr_climate_insight.pdf
 
 # IDE
 .vscode/

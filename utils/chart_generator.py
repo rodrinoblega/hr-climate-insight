@@ -109,9 +109,11 @@ def generate_chart(
         ax.set_ylabel('Cantidad de respuestas', fontsize=10)
         ax.set_xlabel('')
 
-        # Title - truncate if too long
+        # Title - wrap if too long, adjust font size for multi-line titles
         title = _format_title(question)
-        ax.set_title(title, fontsize=11, pad=10)
+        num_lines = title.count('\n') + 1
+        title_fontsize = 11 if num_lines == 1 else (10 if num_lines == 2 else 9)
+        ax.set_title(title, fontsize=title_fontsize, pad=10)
 
         # Remove top and right spines
         ax.spines['top'].set_visible(False)
@@ -144,19 +146,30 @@ def generate_chart(
         return None
 
 
-def _format_title(question: str, max_length: int = 60) -> str:
-    """Format question text for use as chart title."""
-    # Remove common prefixes like "1. 1)." etc.
+def _format_title(question: str, max_chars_per_line: int = 50) -> str:
+    """Format question text for use as chart title, wrapping long titles."""
     import re
+    import textwrap
+
+    # Remove common prefixes like "1. 1)." etc.
     cleaned = re.sub(r'^[\d\.\)\s]+', '', question)
 
-    # Truncate if needed
-    if len(cleaned) > max_length:
-        cleaned = cleaned[:max_length-3] + '...'
-
-    # Ensure it starts with ¿ if it's a question
-    if not cleaned.startswith('¿') and '?' in cleaned:
+    # Only add ¿ at the start if:
+    # 1. The text doesn't already start with ¿
+    # 2. The text contains ? (it's a question)
+    # 3. The text doesn't already contain ¿ somewhere (already has opening mark)
+    if not cleaned.startswith('¿') and '?' in cleaned and '¿' not in cleaned:
         cleaned = '¿' + cleaned
+
+    # Wrap long titles into multiple lines (max 3 lines)
+    if len(cleaned) > max_chars_per_line:
+        wrapped = textwrap.fill(cleaned, width=max_chars_per_line)
+        lines = wrapped.split('\n')
+        if len(lines) > 3:
+            # If more than 3 lines, truncate the third line
+            lines = lines[:3]
+            lines[2] = lines[2][:max_chars_per_line-3] + '...'
+        cleaned = '\n'.join(lines)
 
     return cleaned
 

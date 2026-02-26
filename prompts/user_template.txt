@@ -1,0 +1,137 @@
+Genera un informe de clima laboral completo para la siguiente encuesta.
+
+=== DATOS DE LA ENCUESTA ===
+
+**Empresa:** {empresa_nombre}
+**País:** {pais}
+**Ciudad:** {ciudad}
+**Fecha:** {fecha}
+**Total de respuestas válidas:** {n_total}
+
+{nota_anonimato}
+
+=== GRÁFICOS DISPONIBLES ===
+
+{graficos_disponibles}
+
+INSTRUCCIONES PARA GRÁFICOS:
+- Incluir entre 4 y 6 gráficos en el informe
+- Usar el marcador [GRAFICO: palabra_clave] donde corresponda
+- El marcador debe ir ANTES del párrafo que analiza ese tema
+- El texto después del marcador DEBE referirse al gráfico
+
+=== DATOS CSV DE LA ENCUESTA ===
+
+```csv
+{datos_csv}
+```
+
+=== ESTRUCTURA REQUERIDA DEL INFORME ===
+
+# Informe de Clima Laboral
+# {empresa_nombre} ({fecha})
+
+**Consultora:** [Consultora de Clima Organizacional]
+**Destinatario:** Dirección General de {empresa_nombre}
+**Fecha:** {fecha}
+
+---
+
+## Resumen Ejecutivo
+[MÍNIMO 400 PALABRAS]
+- Contexto y propósito de la encuesta
+- Metodología utilizada (cantidad de respuestas, segmentos)
+- Principales hallazgos positivos CON DATOS ESPECÍFICOS
+- Principales áreas de oportunidad CON DATOS ESPECÍFICOS
+- Nota sobre anonimato si hubo exclusiones
+
+---
+
+## Dimensiones Analizadas
+
+[Analiza las preguntas del CSV e identifica las dimensiones que cubre esta encuesta.
+Crea una sección para CADA dimensión detectada (pueden ser 5, 7, 10 o más).]
+
+Para CADA dimensión:
+
+### [N]. [Nombre de la Dimensión]
+[MÍNIMO 500 PALABRAS por dimensión]
+
+- Párrafo introductorio explicando qué mide esta dimensión
+- Resultados detallados con datos exactos desglosados
+- Comparación entre sectores/segmentos
+- [GRAFICO: palabra_clave] donde corresponda
+- Análisis interpretativo (2-3 párrafos profundos)
+- Nivel de riesgo con justificación
+
+---
+
+## Tabla Resumen
+
+| Dimensión | Resultado Principal | Nivel |
+|-----------|---------------------|-------|
+| [Emoji] [Dimensión] | [Dato específico] | 🟢/🟡/🔴 |
+
+Emojis: 🏢 Compromiso | ⚖️ Equidad | 💰 Compensación | 📚 Desarrollo | 🛠️ Herramientas | 👥 Equipo | 📢 Comunicación | 👔 Liderazgo | 🎯 Dirección
+
+---
+
+## Evaluación Global del Clima
+[MÍNIMO 400 PALABRAS]
+
+**Fortalezas destacadas:**
+1. [Con datos específicos]
+2. [Con datos específicos]
+3. [Con datos específicos]
+
+**Oportunidades de mejora prioritarias:**
+1. [Con datos específicos]
+2. [Con datos específicos]
+3. [Con datos específicos]
+
+---
+
+## Plan de Acción Recomendado
+[MÍNIMO 600 PALABRAS]
+
+### Acciones Inmediatas (0-3 meses)
+
+**Para RRHH:**
+1. [Acción con contexto, objetivo, actividades, indicador, timeline]
+
+**Para Líderes:**
+1. [Acción con contexto, objetivo, actividades, indicador]
+
+### Acciones de Mediano Plazo (3-6 meses)
+
+### Seguimiento (6-12 meses)
+
+---
+
+## Conclusiones
+[MÍNIMO 300 PALABRAS]
+
+- Síntesis del estado actual
+- Reconocimiento a los colaboradores
+- Mensaje motivacional constructivo
+- Próximos pasos concretos
+
+---
+
+=== RECORDATORIOS FINALES ===
+
+CLASIFICACIÓN DE RIESGOS:
+- 🔴 CRÍTICO: promedio < 3.0
+- 🟡 ATENCIÓN: promedio 3.0-3.9
+- 🟢 SALUDABLE: promedio ≥ 4.0
+
+ADAPTACIÓN LINGÜÍSTICA según país:
+- Argentina, Uruguay, Paraguay: usar "vos", "sentís", "tenés"
+- España: usar "tú" formal pero cercano
+- México, Colombia, Perú, Chile, otros LATAM: usar "tú"
+- Brasil: usar "você"
+- USA/UK: escribir TODO en inglés
+
+EXTENSIÓN MÍNIMA TOTAL: 8,000 palabras
+
+Genera el informe completo ahora.

@@ -32,6 +32,7 @@ from utils.chart_generator import (
     generate_all_charts,
     get_chartable_questions_summary,
 )
+from prompts.section_prompts import SYSTEM_PROMPT_BASE, SECTIONS
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,143 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Month translations by language
+MONTH_TRANSLATIONS = {
+    "es": {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+        5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+        9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+    },
+    "pt": {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    },
+    "en": {
+        1: "January", 2: "February", 3: "March", 4: "April",
+        5: "May", 6: "June", 7: "July", 8: "August",
+        9: "September", 10: "October", 11: "November", 12: "December"
+    }
+}
+
+# Country to language mapping
+COUNTRY_LANGUAGE = {
+    "argentina": "es", "méxico": "es", "mexico": "es", "españa": "es", "spain": "es",
+    "colombia": "es", "chile": "es", "perú": "es", "peru": "es", "uruguay": "es",
+    "paraguay": "es", "venezuela": "es", "ecuador": "es", "bolivia": "es",
+    "brasil": "pt", "brazil": "pt",
+    "usa": "en", "united states": "en", "uk": "en", "united kingdom": "en",
+    "canada": "en", "australia": "en"
+}
+
+
+def get_localized_date(pais: str) -> str:
+    """Get current date formatted in the language of the country."""
+    now = datetime.now()
+    country_lower = pais.lower().strip()
+    lang = COUNTRY_LANGUAGE.get(country_lower, "es")  # Default to Spanish
+    month_name = MONTH_TRANSLATIONS[lang][now.month]
+    return f"{month_name} {now.year}"
+
+
+def generate_report_by_sections(
+    client: OpenAI,
+    datos_csv: str,
+    empresa: str,
+    pais: str,
+    ciudad: str,
+    fecha: str,
+    n_total: int,
+    nota_anonimato: str,
+    graficos_disponibles: str,
+) -> str:
+    """
+    Generate report in sections to ensure sufficient content length.
+
+    Makes separate API calls for each section, passing context between them.
+    This approach produces ~8,000+ words instead of ~2,000 from a single call.
+
+    Args:
+        client: OpenAI client instance
+        datos_csv: CSV data prepared for LLM
+        empresa: Company name
+        pais: Country
+        ciudad: City
+        fecha: Report date
+        n_total: Total valid responses
+        nota_anonimato: Anonymity note
+        graficos_disponibles: Available charts summary
+
+    Returns:
+        Complete markdown report
+    """
+    all_sections_content = []
+    dimensiones_previas = ""
+    resumen_dimensiones = ""
+    total_tokens = {"input": 0, "output": 0}
+
+    for i, section in enumerate(SECTIONS):
+        logger.info(f"Generating section {i+1}/{len(SECTIONS)}: {section['name']} (min {section['min_words']} words)")
+
+        # Format the section prompt with available data
+        section_prompt = section["prompt"].format(
+            empresa_nombre=empresa,
+            pais=pais,
+            ciudad=ciudad,
+            fecha=fecha,
+            n_total=n_total,
+            nota_anonimato=nota_anonimato,
+            graficos_disponibles=graficos_disponibles,
+            datos_csv=datos_csv,
+            dimensiones_previas=dimensiones_previas,
+            resumen_dimensiones=resumen_dimensiones,
+        )
+
+        # Make API call for this section
+        response = client.chat.completions.create(
+            model=config.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT_BASE},
+                {"role": "user", "content": section_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000,
+        )
+
+        section_content = response.choices[0].message.content
+        all_sections_content.append(section_content)
+
+        # Track token usage
+        usage = response.usage
+        total_tokens["input"] += usage.prompt_tokens
+        total_tokens["output"] += usage.completion_tokens
+
+        logger.info(f"  Section {section['name']}: {len(section_content)} chars, {usage.completion_tokens} tokens")
+
+        # Update context for subsequent sections
+        if section["id"].startswith("dimensiones"):
+            dimensiones_previas += f"\n\n{section_content}"
+
+            # Create a brief summary for later sections
+            # Extract just the dimension titles and key findings
+            lines = section_content.split("\n")
+            for line in lines:
+                if line.startswith("### ") or line.startswith("**Nivel de riesgo"):
+                    resumen_dimensiones += line + "\n"
+
+    # Log total token usage
+    total = total_tokens["input"] + total_tokens["output"]
+    logger.info(f"Total token usage - Input: {total_tokens['input']}, Output: {total_tokens['output']}, Total: {total}")
+
+    # Combine all sections
+    full_report = "\n\n".join(all_sections_content)
+
+    # Count approximate words
+    word_count = len(full_report.split())
+    logger.info(f"Total report length: {len(full_report)} chars, ~{word_count} words")
+
+    return full_report
 
 
 def generate_report(
@@ -123,74 +261,32 @@ def generate_report(
     logger.info("Preparing data for LLM analysis...")
     datos_csv = prepare_data_for_llm(filtered_df)
 
-    # Step 6: Load and format prompt
-    logger.info("Loading master prompt...")
-    prompt_template = config.get_master_prompt()
+    # Step 6: Prepare variables for report generation
+    fecha = get_localized_date(pais)
 
-    fecha = datetime.now().strftime("%B %Y")
+    # Format charts section
+    if include_charts and charts_summary:
+        graficos_disponibles = charts_summary
+    else:
+        graficos_disponibles = "No hay gráficos disponibles para esta encuesta."
 
-    prompt = prompt_template.format(
-        empresa_nombre=empresa,
+    # Step 7: Generate report by sections (7 API calls for deeper content)
+    logger.info(f"Generating report by sections using {config.OPENAI_MODEL}...")
+    client = OpenAI(api_key=config.OPENAI_API_KEY)
+
+    markdown_content = generate_report_by_sections(
+        client=client,
+        datos_csv=datos_csv,
+        empresa=empresa,
         pais=pais,
         ciudad=ciudad,
         fecha=fecha,
         n_total=len(filtered_df),
         nota_anonimato=nota_anonimato,
-        datos_csv=datos_csv,
+        graficos_disponibles=graficos_disponibles,
     )
 
-    # Add charts instructions if charts are enabled - BEFORE the main content
-    if include_charts and charts_summary:
-        charts_instruction = f"""
-
-=== GRÁFICOS DISPONIBLES (USO OBLIGATORIO) ===
-
-{charts_summary}
-
-INSTRUCCIONES CRÍTICAS PARA GRÁFICOS:
-1. DEBES usar entre 4 y 6 marcadores [GRAFICO: palabra_clave] en tu respuesta
-2. Usa la palabra_clave EXACTA de la lista anterior (ej: orgullo, recomendar, liderazgo)
-3. Coloca el marcador en una línea sola, seguido de un párrafo que analice ESE gráfico específico
-4. IMPORTANTE: El texto después del gráfico debe hablar sobre LA MISMA pregunta del gráfico
-
-Ejemplo CORRECTO:
-
-[GRAFICO: orgullo]
-
-Como se observa en el gráfico anterior, el nivel de orgullo de los colaboradores es alto, con un promedio de 4.6...
-
-Ejemplo INCORRECTO (NO hacer esto):
-
-[GRAFICO: orgullo]
-
-Como se observa en el gráfico anterior, el 85% recomendaría la empresa...  ← ERROR: habla de recomendar, no de orgullo
-
-=== FIN INSTRUCCIONES DE GRÁFICOS ===
-
-"""
-        # Insert charts instruction near the beginning of the prompt, after the header
-        prompt = prompt.replace("REGLAS CRÍTICAS (NO NEGOCIABLES):",
-                               charts_instruction + "REGLAS CRÍTICAS (NO NEGOCIABLES):")
-
-    # Step 7: Call LLM
-    logger.info(f"Calling OpenAI API ({config.OPENAI_MODEL})...")
-    client = OpenAI(api_key=config.OPENAI_API_KEY)
-
-    response = client.chat.completions.create(
-        model=config.OPENAI_MODEL,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=16000,
-    )
-
-    markdown_content = response.choices[0].message.content
-    logger.info(f"Received response: {len(markdown_content)} characters")
-
-    # Log token usage
-    usage = response.usage
-    logger.info(f"Token usage - Input: {usage.prompt_tokens}, Output: {usage.completion_tokens}, Total: {usage.total_tokens}")
+    logger.info(f"Report generation complete: {len(markdown_content)} characters")
 
     # Step 8: Generate outputs
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
